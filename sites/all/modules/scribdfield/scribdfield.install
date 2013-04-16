@@ -1,0 +1,51 @@
+<?php
+/**
+ * @file Scribdfield - Installation file.
+ */
+
+/**
+ * Implements hook_field_schema().
+ */
+function scribdfield_field_schema($field) {
+  switch ($field['type']) {
+    case 'scribdfield':
+      $columns = array(
+        'doc_id' => array('type' => 'int', 'length' => 10, 'not null' => FALSE),
+        'access_key' => array('type' => 'varchar', 'length' => 30, 'not null' => FALSE),
+        'fid' => array('type' => 'int', 'length' => 10, 'not null' => FALSE),
+      );
+      $indexes = array(
+        'fid' => array('fid'),
+        'doc_id' => array('doc_id'),
+      );
+      $foreign_keys = array(
+        'fid' => array(
+          'table' => 'file_managed',
+          'columns' => array('fid' => 'fid'),
+        ),
+      );
+      break;
+  }
+  
+  return array(
+    'columns' => $columns,
+    'indexes' => $indexes,
+    'foreign keys' => $foreign_keys,
+  );
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function scribdfield_uninstall() {
+  variable_del('scribd_api_key');
+  variable_del('scribd_api_secret');
+  variable_del('scribd_access_files');
+  variable_del('scribd_delete_local');
+  variable_del('scribd_local_filepath');
+  variable_del('scribdfield_allow_sharing');
+  variable_del('scribdfield_reader_height');
+  variable_del('scribdfield_reader_width');
+  variable_del('scribdfield_reader_mode');
+  variable_del('scribdfield_reader_page');
+}

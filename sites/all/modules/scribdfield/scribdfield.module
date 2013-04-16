@@ -1,0 +1,714 @@
+<?php
+define('SCRIBDFIELD_PLATFORM_CURL', 'curl');
+define('SCRIBDFIELD_PLATFORM_FOPEN', 'fopen');
+define('SCRIBDFIELD_PLATFORM_EITHER', 'either');
+/**
+ * Implementation of hook_menu().
+ */
+function scribdfield_menu() {
+  $items = array();
+  $items['admin/config/media/scribdfield'] = array(
+    'title' => 'Scribdfield',
+    'description' => 'Configure ScribdField integration with Scribd.com.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('scribdfield_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+  );
+  return $items;
+}
+
+/**
+ * Configuration settings form.
+ */
+function scribdfield_admin_settings() {
+  $form['scribdfield_server'] = array(
+    '#collapsible'   => TRUE,
+    '#title'         => t('Scribd.com API information'),
+    '#type'          => 'fieldset',
+  );
+  $form['scribdfield_server']['scribd_api_key'] = array(
+    '#default_value' => variable_get('scribd_api_key', NULL),
+    '#title'         => t('Scribd.com API key'),
+    '#type'          => 'textfield',
+  );
+  $form['scribdfield_server']['scribd_api_secret'] = array(
+    '#default_value' => variable_get('scribd_api_secret', NULL),
+    '#title'         => t('Scribd.com API secret'),
+    '#type'          => 'textfield',
+  );
+  // TODO: Delete files from local directory if this is set
+  /*$form['scribdfield_server']['scribd_delete_local'] = array(
+    '#default_value' => variable_get('scribd_delete_local', NULL),
+    '#title'         => t('Delete local file after upload to Scribd.com'),
+    '#type'          => 'checkbox',
+  );*/
+  $form['scribdfield_server']['scribd_local_filepath'] = array(
+    '#default_value' => variable_get('scribd_local_filepath', NULL),
+    '#title'         => t('File directory'),
+    '#type'          => 'textfield',
+    '#description'   => t('Optional subdirectory within the upload destination where files will be stored. Do not include preceding or trailing slashes.'),
+  );
+  // TODO: Set this per instance
+  /*$form['scribdfield_server']['scribd_access_files'] = array(
+    '#default_value' => variable_get('scribd_access_files', 'public'),
+    '#title'         => t('Access'),
+    '#type'          => 'radios',
+    '#options' => array(
+      'private' => t('Private'),
+      'public' => t('Public'),
+    ),
+  '#description' => t('Should documents uploaded to scribd.com be available to the public?'),
+  );*/
+  $form['scribdfield_reader'] = array(
+    '#collapsible'   => TRUE,
+    '#title'         => t('Scribd.com Reader Configuration Options'),
+    '#type'          => 'fieldset',
+    '#description'   => t('Optional settings for the embedded Javascript Scribd Reader.'),
+  );
+  $form['scribdfield_reader']['scribdfield_reader_height'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Height'),
+    '#description' => t("You can set a default height for the player in pixels. If this is not specified, Scribd Reader will attempt to size itself correctly for the webpage it's embedded in."),
+    '#size' => 5,
+    '#maxlength' => 5,
+    '#default_value' => variable_get('scribdfield_reader_height', ''),
+  );
+  $form['scribdfield_reader']['scribdfield_reader_width'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Width'),
+    '#description' => t("You can set a default width for the player in pixels. If this is not specified, Scribd Reader will attempt to size itself correctly for the webpage it's embedded in."),
+    '#size' => 5,
+    '#maxlength' => 5,
+    '#default_value' => variable_get('scribdfield_reader_width', ''),
+  );
+  $form['scribdfield_reader']['scribdfield_reader_page'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default Start Page'),
+    '#description' => t("You can use this to scroll Scribd Reader to a default start page. Defaults to 1."),
+    '#size' => 10,
+    '#maxlength' => 10,
+    '#default_value' => variable_get('scribdfield_reader_page', ''),
+  );
+  $form['scribdfield_reader']['scribdfield_reader_mode'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default Reader Mode'),
+    '#description' => t('Sets the default view mode for the document, overriding the document\'s default. Parameter must be added before the document is written. Valid values are: "list" and "slide". Only "list" and "slide" are supported for the HMTL5 Reader.'),
+    '#maxlength' => 255,
+    '#default_value' => variable_get('scribdfield_reader_mode', ''),
+  );
+  $form['scribdfield_reader']['scribdfield_allow_sharing'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow Sharing'),
+    '#default_value' => variable_get('scribdfield_allow_sharing', TRUE),
+    '#description' => t('Defines whether the share button in the toolbar is shown, overriding the default (true unless the document is flagged as private). Parameter must be added before the document is written.'),
+  );
+  return system_settings_form($form);
+}
+
+/**************************************************************************
+ * Field Type API: Basic Hooks
+ **************************************************************************/
+
+/**
+ * Implements hook_field_info().
+ */
+function scribdfield_field_info() {
+  return array(
+    'scribdfield' => array(
+      'label' => t('Scribd File'),
+      'description' => t('This field stores a file to be stored on Scribd.'),
+      'default_widget' => 'scribdfield_combined',
+      'default_formatter' => 'scribdfield_default',
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_validate()
+ */
+function scribdfield_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  
+  // make sure a numeric value has been entered for the doc_id
+  foreach ($items as $delta => $item) {
+    if (!empty($item['doc_id']) && !is_numeric($item['doc_id'])) {
+      $errors[$field['field_name']][$langcode][$delta][] = array(
+        'error' => 'Scribd Document ID provided is not a number.', 
+        'message' => t('%name: the value for a Scribd document ID must be numeric.', array('%name' => $instance['label'])),
+      );
+    }
+  }
+}
+
+/** 
+ * Implements hook_field_is_empty(). 
+ */ 
+function scribdfield_field_is_empty($item, $field) {
+  
+  if (empty($item['doc_id']) && empty($item['access_key']) && empty($item[0]['fid'])) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**************************************************************************
+ * Field Type API: Instance
+ **************************************************************************/
+
+/**
+ * Implements hook_field_instance_settings_form
+ */
+function scribdfield_field_instance_settings_form($field, $instance) {
+  if ($field['type'] == 'scribdfield') {
+    $settings = $instance['settings'];
+    
+    $form = array();
+    // local storage element
+    //set default value
+    /*
+    //@TODO: make this work on the file handling side of this
+    if (!array_key_exists('scribd_local_storage', $settings) || $settings['scribd_local_storage'] == 0 || empty($settings['scribd_local_storage'])) {
+      $scribd_local_storage_default = FALSE;
+    }
+    else {
+      $scribd_local_storage_default = TRUE;
+    }
+    $form['scribd_local_storage'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Scribd Local Storage'),
+      '#description' => t('Check the box to keep a copy of the file you upload to Scribd stored locally as well.'),
+      '#default_value' => $scribd_local_storage_default,
+    );*/
+    
+    // local storage location element
+    //set default value
+    if (!array_key_exists('scribd_local_storage_directory', $settings)) {
+      $scribd_local_storage_directory_default = '';
+    }
+    else {
+      $scribd_local_storage_directory_default = $settings['scribd_local_storage_directory'];
+    }
+    $form['scribd_local_storage_directory'] = array(
+      '#title' => t('Scribd File Directory'),
+      '#description' => t('Optional subdirectory within the upload destination where files you upload to Scribd will be stored locally. Do not include preceding or trailing slashes.'),
+      '#type' => 'textfield',
+      '#default_value' => $scribd_local_storage_directory_default,
+    );
+    
+    // public or private uri storage scheme
+    //set default value
+    if (!array_key_exists('scribdfield_uri_scheme', $settings)) {
+      $scribdfield_uri_scheme = 'public';
+    }
+    else {
+      $scribdfield_uri_scheme = $settings['scribdfield_uri_scheme'];
+    }
+    
+    $form['scribdfield_uri_scheme'] = array(
+      '#type' => 'radios',
+      '#title' => t('Public or Private Field Storage'),
+      '#description' => t('Should the files stored locally be accessible in a publicly available directory? Note: Private storage will increase the processing resources needed.'),
+      '#options' => array('public' => 'Public', 'private' => 'Private'),
+      '#default_value' => $scribdfield_uri_scheme,
+    );
+    
+    return $form;
+  }
+  
+}
+
+/**************************************************************************
+ * Field Type API: Widget
+ **************************************************************************/
+
+/**
+ * Implements hook_field_widget_info()
+ */
+function scribdfield_field_widget_info() {
+  return array(
+      'scribdfield_combined' => array(
+        'label' => t('Scribd'),
+        'field types' => array('scribdfield'),
+      ),
+    );
+}
+
+/**
+ * Implements hook_field_widget_form()
+ */
+function scribdfield_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $element += array( 
+    '#delta' => $delta, 
+  );
+  
+  $settings = $instance['settings'];
+  
+  switch ($instance['widget']['type']) {
+    case 'scribdfield_combined':
+      
+      // the field_widget_form expects to have the file directory set
+      if (!array_key_exists('scribd_local_storage_directory', $instance['settings'])) {
+        $instance['settings']['file_directory'] = '';
+      }
+      else {
+        $instance['settings']['file_directory'] = $instance['settings']['scribd_local_storage_directory'];
+      }
+      
+      // the field_widget_form expects to have the uri_scheme set
+      if (!array_key_exists('scribdfield_uri_scheme', $instance['settings'])) {
+        $field['settings']['uri_scheme'] = 'public';
+      }
+      else {
+        $field['settings']['uri_scheme'] = $instance['settings']['scribdfield_uri_scheme'];
+      }
+      
+      // The progress indicator type is required by the field_widget_form
+      $instance['widget']['settings']['progress_indicator'] = 'throbber';
+      
+      $elements = file_field_widget_form($form, $form_state, $field, $instance, $langcode, $items, $delta, $element);
+      
+      $settings = $instance['settings'];
+      
+      foreach (element_children($elements) as $delta) {
+        
+        // Ensure this is a valid Scribd file type.
+        $supported_extensions = array('pdf', 'txt', 'ps', 'rtf', 'epub', 'odt', 'odp', 'ods', 'odg', 'odf', 'sxw', 'sxc', 'sxi', 'sxd', 'doc', 'ppt', 'pps', 'xls', 'docx', 'pptx', 'ppsx', 'xlsx', 'tif', 'tiff');
+        
+        $extensions = isset($elements[$delta]['#upload_validators']['file_validate_extensions'][0]) ? $elements[$delta]['#upload_validators']['file_validate_extensions'][0] : implode(' ', $supported_extensions);
+        $extensions = array_intersect(explode(' ', $extensions), $supported_extensions);
+        $elements[$delta]['#upload_validators']['file_validate_extensions'][0] = implode(' ', $extensions);
+
+        // Add all extra functionality provided by the image widget.
+        $elements[$delta]['#process'][] = 'scribdfield_field_widget_process';
+        
+        // document id element - for previously uploaded documents
+        // set default value
+        if (empty($items) || !array_key_exists('doc_id', $items[0])) {
+          $doc_id_defualt = '';
+        }
+        else {
+          $doc_id_defualt = $items[0]['doc_id'];
+        }
+        
+        $elements[$delta]['doc_id'] = array();
+        $elements[$delta]['doc_id'] += array(
+          '#title' => t('Scribd Document ID'),
+          '#description' => t('If you already have a Scribd Document ID from an upload you did directly to Scribd.com enter it here. Otherwise, this will be created automatically upon upload of your file.'),
+          '#type' => 'textfield',
+          '#default_value' => $doc_id_defualt,
+          '#maxlength' => 11,
+          '#access' => user_access('administer scribd document ID'),
+        );
+        // access key element - for previously uploaded documents
+        // set default value
+        if (empty($items) || !array_key_exists('access_key', $items[0])) {
+          $access_key_defualt = '';
+        }
+        else {
+          $access_key_defualt = $items[0]['access_key'];
+        }
+        $elements[$delta]['access_key'] = array();
+        $elements[$delta]['access_key'] += array(
+          '#title' => t('Scribd Document Access Key'),
+          '#description' => t('If you already have a Scribd Document Access Key from an upload you did directly to Scribd.com enter it here. Otherwise, this will be created automatically upon upload of your file.'),
+          '#type' => 'textfield',
+          '#default_value' => $access_key_defualt,
+          '#maxlength' => 30,
+          '#access' => user_access('administer scribd access key'),
+        );
+      }
+      
+  }
+  
+  if ($field['cardinality'] == 1) {
+    // If there's only one field, return it as delta 0.
+    if (empty($elements[0]['#default_value']['fid'])) {
+      $elements[0]['#description'] = theme('file_upload_help', array('description' => $instance['description'], 'upload_validators' => $elements[0]['#upload_validators']));
+    }
+  }
+  else {
+    $elements['#file_upload_description'] = theme('file_upload_help', array('upload_validators' => $elements[0]['#upload_validators']));
+  }
+  
+  return $elements;
+}
+
+/**
+ * An element #process callback for the scribdfield_widget field type.
+ *
+ * Expands the scribdfield_widget type to additional fields.
+ */
+ 
+function scribdfield_field_widget_process($element, &$form_state, $form) {
+  
+  $item = $element['#value'];
+  $item['fid'] = $element['fid']['#value'];
+  
+  $instance = field_widget_instance($element, $form_state);
+
+  $settings = $instance['settings'];
+  $widget_settings = $instance['widget']['settings'];
+
+  return $element;
+}
+
+/**************************************************************************
+ * Field API: Processing
+ **************************************************************************/
+
+function scribdfield_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  
+  //handle completely empty items
+  if (empty($items)) {
+    $null_value_array = array(
+      'fid' => NULL,
+      'doc_id' => NULL,
+      'access_key' => NULL
+    );
+    $entity->{$field['field_name']}[$langcode][] = $null_value_array;
+    $items[] = $null_value_array;
+  }
+  
+  // For each of the items get the fid into the right places 
+  // so it is saved to the field correctly
+  foreach ($items as $delta => $item) {
+    // handle fid if one exists and set to null if it doesn't
+    if (!empty($item[0]['fid'])) {
+      // Set the fid in the entity so it gets saved in the field table as well.
+      $entity->{$field['field_name']}[$langcode][$delta]['fid'] = $item[$delta]['fid'];
+      // Just covering all the bases by adding this to the item as well
+      $items[$delta]['fid'] = $item[0]['fid'];
+      
+      // Upload the file to Scribd, retrieve the doc_id and access_key
+      // Set the local field values for the doc_id and access_key
+      $file = file_load($item[0]['fid']);
+      $results = scribdfield_api_upload($file, $item['doc_id'] = NULL);
+      
+      // Set the doc_id and access_key variables witht the result values
+      if (!empty($results['doc_id'][0])) {
+        $items[$delta]['doc_id'] = (int)$results['doc_id'][0];
+      }
+      if (!empty($results['access_key'][0])) {
+        $items[$delta]['access_key'] = $results['access_key'][0];
+      }
+      
+    }
+    else {
+      $items[$delta]['fid'] = NULL;
+    }
+    
+    // handle empty doc id
+    if (empty($items[$delta]['doc_id'])) {
+      $items[$delta]['doc_id'] = NULL;
+      $entity->{$field['field_name']}[$langcode][$delta] = $items[$delta]['doc_id'];
+    } 
+    
+  }// foreach ($items as $delta => $item)
+  
+}
+
+/**
+ * Implements hook_field_load()
+ */
+function scribdfield_field_load($entity_type, $entities, $field, $instances, $langcode, &$items, $age) {
+  file_field_load($entity_type, $entities, $field, $instances, $langcode, $items, $age);
+}
+
+/**
+ * Implements hook_field_insert()
+ */
+function scribdfield_field_insert($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  
+  foreach ($items as $delta => $item) {
+    
+    if (!empty($item[$delta]['fid'])) {
+      // Make the file permanent.
+      $file = file_load($item[$delta]['fid']);
+      $file->status = FILE_STATUS_PERMANENT;
+      file_save($file);
+      //  Get the id
+      list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+      // Need to add an entry in the file_usage table.
+      file_usage_add($file, 'scribdfield', $entity_type, $id);
+    }
+  }
+  
+}
+
+/**
+ * Implements hook_field_update
+ */
+function scribdfield_field_update($entity_type, $entity, $field, $instance, $langcode, &$items) {
+    
+    list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+
+    // On new revisions, all files are considered to be a new usage and no
+    // deletion of previous file usages are necessary.
+    if (!empty($entity->revision)) {
+      foreach ($items as $item) {
+        $file = (object) $item;
+        $file->status = FILE_STATUS_PERMANENT;
+        file_save($file);
+        //  Get the id
+        list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+        // Need to add an entry in the file_usage table.
+        file_usage_add($file, 'scribdfield', $entity_type, $id);
+      }
+      return;
+    }
+
+    // Build a display of the current FIDs.
+    $current_fids = array();
+    foreach ($items as $item) {
+      $current_fids[] = $item['fid'];
+    }
+    
+    // Create a bare-bones entity so that we can load its previous values.
+    $original = entity_create_stub_entity($entity_type, array($id, $vid, $bundle));
+    field_attach_load($entity_type, array($id => $original), FIELD_LOAD_CURRENT, array('field_id' => $field['id']));
+    
+    // Compare the original field values with the ones that are being saved.
+    $original_fids = array();
+    if (!empty($original->{$field['field_name']}[$langcode])) {
+      foreach ($original->{$field['field_name']}[$langcode] as $original_item) {
+        $original_fids[] = $original_item['fid'];
+        if (isset($original_item['fid']) && !in_array($original_item['fid'], $current_fids)) {
+          // To prevent the file field from deleting files it doesn't know about, check
+          // the file reference count. Temporary files can be deleted because they
+          // are not yet associated with any content at all.
+          $file = (object) $original_item;
+          $file_usage = file_usage_list($file);
+          if ($file->status == 0 || !empty($file_usage['scribdfield'])) {
+            // Remove file from scribd
+            if (scribdfield_api_delete($original_item['doc_id'])) {
+              drupal_set_message(t('The file has been removed from Scribd.'));
+              // Remove from local
+              list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+              file_usage_delete($file, 'scribdfield', $entity_type, $id);
+              file_delete($file);
+            }
+          }
+        }
+      }
+    }
+    
+    // Add new usage entries for newly added files.
+    foreach ($items as $delta => $item) {
+      if (!in_array($item[$delta]['fid'], $original_fids) && !empty($item[$delta]['fid'])) {
+        // Make the file permanent.
+        $file = file_load($item[$delta]['fid']);
+        $file->status = FILE_STATUS_PERMANENT;
+        file_save($file);
+        //  Get the id
+        list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+        // Need to add an entry in the file_usage table.
+        file_usage_add($file, 'scribdfield', $entity_type, $id);
+      }
+    }
+    
+}
+
+/**
+ * Implements hook_field_delete().
+ */
+function scribdfield_field_delete($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  
+  // Delete all file usages within this entity.
+  foreach ($items as $delta => $item) {
+    // To prevent the file field from deleting files it doesn't know about, check
+    // the file reference count. Temporary files can be deleted because they
+    // are not yet associated with any content at all.
+    $file = (object) $item;
+    $file_usage = file_usage_list($file);
+    if ($file->status == 0 || !empty($file_usage['scribdfield'])) {
+      // Remove file from scribd
+      if (scribdfield_api_delete($item['doc_id'])) {
+        drupal_set_message(t('The file has been removed from Scribd.'));
+        // Remove from local
+        list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+        file_usage_delete($file, 'scribdfield', $entity_type, $id);
+        file_delete($file);
+      }
+    }
+  }
+  
+}
+
+/**************************************************************************
+ * Scribd API
+ **************************************************************************/
+
+/**
+ * Uses Scribd's docs.upload API function to send uploaded file along.
+ *
+ * http://www.scribd.com/developers/api?method_name=docs.upload
+ *
+ * @param $filename
+ *   Full filename (with path) to the file to upload.
+ * @param $public
+ *   If TRUE, make the file public on Scribd.com.
+ */
+function scribdfield_api_upload($file, $doc_id) {
+  
+  // Initialize variables
+  $filepath = '';
+  $access = 'public';
+  $rev_id = NULL;
+  
+  $filepath = drupal_realpath($file->uri);
+  
+  if (!file_exists($filepath)) {
+    return FALSE; 
+  }
+  
+  // Temporarily using the file api scheme for the access setting on Scribd as well
+  // @TODO: create a seperate setting for this per instance
+  $access = file_uri_scheme($file->uri);
+  
+  // If this is an existing document set the rev_id so the existing doc on 
+  // Scribd gets replaced.
+  if (!empty($doc_id)) {
+    $rev_id = (int)$doc_id;
+  }
+  
+  $params = array(
+    'file'      => '@' . $filepath,
+    'access'    => $access,
+    'rev_id'    => $rev_id
+  );
+  
+  $api = _scribdfield_get_api_class();
+  return $api->upload($params);
+  
+}
+
+/**
+ * Uses Scribd's docs.upload API function to send uploaded file along.
+ *
+ * http://www.scribd.com/developers/api?method_name=docs.upload
+ *
+ * @param $filename
+ *   Full filename (with path) to the file to upload.
+ * @param $public
+ *   If TRUE, make the file public on Scribd.com.
+ */
+function scribdfield_api_delete($doc_id) {
+  // If this is an existing document set the rev_id so the existing doc on 
+  // Scribd gets replaced.
+  if (!empty($doc_id)) {
+    $api = _scribdfield_get_api_class();
+    return $api->delete($doc_id);
+  }
+  
+  //return false;
+}
+
+/**
+ * Utility function to get an instance of the Scribd API class.
+ */
+function _scribdfield_get_api_class() {
+  static $api;
+  if ($api instanceof Scribd) {
+    return $api;
+  }
+  require_once drupal_get_path('module', 'scribdfield') . '/includes/scribd.php';
+  $api = new Scribd(variable_get('scribd_api_key', NULL), variable_get('scribd_api_secret', NULL));
+  return $api;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function scribdfield_theme() {
+  return array(
+    'scribdfield_formatter' => array(
+      'variables' => array('item' => NULL),
+    ),
+  );
+}
+
+function theme_scribdfield_formatter($variables) {
+  $doc_id = $variables['item']['doc_id'];
+  $access_key = $variables['item']['access_key'];
+
+  $output = array(
+      '<script type="text/javascript" src="http://www.scribd.com/javascripts/scribd_api.js"></script>',
+      '<div id="embedded_doc_' . $doc_id . '" class="collapsible collapsed"></div>',
+      '<script type="text/javascript">',
+      'var scribd_doc = scribd.Document.getDoc("' . $doc_id . '", "' . $access_key . '");',
+      'scribd_doc.addParam("jsapi_version", 2);',
+    );
+  
+  // Set height
+  $height = variable_get('scribdfield_reader_height', '');
+  if (!empty($height)) {
+    $output[] = 'scribd_doc.addParam("height", ' . $height . ');';
+  }
+  
+  // Set width
+  $width = variable_get('scribdfield_reader_width', '');
+  if (!empty($width)) {
+    $output[] = 'scribd_doc.addParam("width", ' . $width . ');';
+  }
+  
+  // Set mode
+  $mode = variable_get('scribdfield_reader_mode', '');
+  if (!empty($mode)) {
+    $output[] = 'scribd_doc.addParam("mode", "' . $mode . '");';
+  }
+  
+  // Set page
+  $page = variable_get('scribdfield_reader_page', '');
+  if (!empty($page)) {
+    $output[] = 'scribd_doc.addParam("page", ' . $page . ');';
+  }
+  
+  // Set allow_share
+  $allow_share = variable_get('scribdfield_allow_sharing', '');
+  if (empty($allow_share)) {
+    $output[] = 'scribd_doc.addParam("allow_share", false);';
+  }
+  
+  $output[] = 'scribd_doc.write("embedded_doc_' . $doc_id . '");';
+  $output[] = '</script>';
+  return implode("\n", $output);
+}
+
+
+
+/**************************************************************************
+ * Field Type API: Formatter
+ **************************************************************************/
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function scribdfield_field_formatter_info() {
+  return array(
+    'scribdfield_default' => array(
+      'label' => t('Scribd'),
+      'description' => t('An embedded Scribd document'),
+      'field types' => array('scribdfield'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function scribdfield_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  $settings = $display['settings'];
+  
+  switch ($display['type']) {
+   case 'scribdfield_default':
+      foreach ($items as $delta => $item) {
+        $element[$delta] = array(
+          '#theme' => 'scribdfield_formatter',
+          '#item' => $item,
+        );
+      }
+   break;
+  }
+
+  return $element;
+}

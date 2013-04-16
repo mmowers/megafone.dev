@@ -1,0 +1,116 @@
+<?php
+
+function form_save_state_init() {
+  drupal_add_js(drupal_get_path('module', 'form_save_state') . '/jquery.jnotify.min.js');
+  drupal_add_css(drupal_get_path('module', 'form_save_state') . '/jquery.jnotify.min.css');
+  drupal_add_js(drupal_get_path('module', 'form_save_state') . '/jstorage.js');
+  drupal_add_js(drupal_get_path('module', 'form_save_state') . '/sisyphus.js');
+}
+
+function form_save_state_menu() {
+  $items = array(
+      "admin/config/form_save_state" => array(
+          "title" => "Configure Save Form State",
+          "type" => MENU_NORMAL_ITEM,
+          "page callback" => "drupal_get_form",
+          "page arguments" => array("form_save_state_get_form_ids_form"),
+          "access arguments" => array("administer nodes"),
+      ),
+  );
+
+  return $items;
+}
+
+function form_save_state_form_alter(&$form, &$form_state, $form_id) {
+
+  $sisphus_forms = variable_get('sisphus_forms', array());
+  $form_save_state_time = variable_get('form_save_state_time', 15);
+  if (in_array($form_id, $sisphus_forms)) {
+    $form_id = array_search($form_id, $sisphus_forms);
+    $form_id = str_replace('_', '-', $form_id);
+    drupal_add_js('var form_id="' . $form_id . '";', 'inline');
+    drupal_add_js('var time="' . $form_save_state_time . '";', 'inline');
+    drupal_add_js(drupal_get_path('module', 'form_save_state') . '/form_save_state.js');
+  }
+}
+
+function form_save_state_get_form_ids_form($form, &$form_state) {
+
+  $form_ids = array(
+      'contact_site_form' => 'contact_site_form',
+      'contact_personal_form' => 'contact_personal_form',
+  );
+  // Add form_ids of all currently known node types too.
+  foreach (node_type_get_types() as $type => $name) {
+    $form_ids[$type . '_node_form'] = $type . '_node_form';
+    $form_ids['comment_node_' . $type . '_form'] = 'comment_node_' . $type . '_form';
+  }
+  $for_textarea = array();
+  $checked = array();
+  $saved_forms = variable_get('sisphus_forms', array());
+
+  foreach ($saved_forms as $key => $value) {
+    if (in_array($key, array_keys($form_ids))) {
+      $checked[$key] = $key;
+    }
+    else {
+      $for_textarea[$key] = $key;
+    }
+  }
+
+  $form['#form_ids'] = $form_ids;
+
+  $form['forms'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Forms'),
+      '#options' => $form_ids,
+      '#default_value' => $checked,
+      '#description' => t('Select the form IDs that you want to enable Motion CAPTCHA.'),
+  );
+
+  $form['additional_forms'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Other Forms:'),
+      '#default_value' => implode("\n", $for_textarea),
+      '#description' => t('Add the form IDs you want to include.'),
+      '#resizable' => FALSE,
+  );
+  $form['time'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Time (in Seconds)'),
+      '#default_value' => variable_get('form_save_state_time', 15),
+      '#size' => 60,
+      '#maxlength' => 128,
+      '#description' => t('The time interval between each form state save'),
+  );
+
+  $form['save'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save Configuration'),
+  );
+
+  return $form;
+}
+
+function form_save_state_get_form_ids_form_submit($form, &$form_state) {
+  $sisphus_forms = array();
+
+  $form_ids = $form['#form_ids'];
+
+  foreach ($form_state['values']['forms'] as $key => $value) {
+    if ($value) {
+      $sisphus_forms[$key] = $form_ids[$key];
+    }
+  }
+
+  if ($form_state['values']['additional_forms'] != '') {
+    $addtional_forms = explode("\n", $form_state['values']['additional_forms']);
+    foreach ($addtional_forms as $additional_item) {
+      if ($additional_item != '') {
+        $sisphus_forms[$additional_item] = $additional_item;
+      }
+    }
+  }
+  variable_set('sisphus_forms', $sisphus_forms);
+  variable_set('form_save_state_time', $form_state['values']['time']);
+}

@@ -1,0 +1,8 @@
+name = ScribdField
+description = Enables integration with Scribd.com.
+package = Other
+core = 7.x
+dependencies[] = field
+files[] = scribdfield.install
+files[] = scribdfield.module
+

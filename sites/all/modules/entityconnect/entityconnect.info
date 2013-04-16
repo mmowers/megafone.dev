@@ -1,0 +1,11 @@
+name = "Entityconnect"
+description = "Allows for referenced entity to be created and edited from the node reference field"
+core = "7.x"
+dependencies[] = "entityreference"
+
+; Information added by drupal.org packaging script on 2012-04-06
+version = "7.x-1.0-alpha3"
+core = "7.x"
+project = "entityconnect"
+datestamp = "1333729248"
+
