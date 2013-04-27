@@ -6,7 +6,6 @@
  */
 
 module_load_include('php', 'oauth_common', 'lib/OAuth');
-require_once('twitter.lib.php');
 
 /**
  * Connect to the Twitter API.
@@ -221,6 +220,27 @@ function twitter_fetch_mentions_timeline($id) {
     }
     twitter_status_save($status);
   }
+}
+
+/**
+ * Pulls tweets from the database.
+ *
+ * @param string $screen_name
+ *   Optionally provide a screen_name to filter.
+ */
+function twitter_tweets($screen_name = NULL) {
+  $query = db_select('twitter', 't')
+    ->fields('t');
+  if (isset($screen_name)) {
+    $query->condition('t.screen_name', $screen_name);
+  }
+  $result = $query->execute();
+
+  $tweets = array();
+  foreach ($result as $row) {
+    $tweets[] = $row;
+  }
+  return $tweets;
 }
 
 /**
