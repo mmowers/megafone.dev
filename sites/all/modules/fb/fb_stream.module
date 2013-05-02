@@ -60,8 +60,7 @@ function fb_stream_node_insert($node) {
         'message' => $node->fb_stream_message,
         'link' => $node_url,
         'name' => $node->title,
-        //'description' => $node->teaser, // TODO: how in D7?
-        'description' => drupal_render(node_view($node, $view_mode = 'teaser')),
+        'description' => text_summary($node->body),
         'caption' => variable_get('site_name', ''),
         'actions' => json_encode(array(
                                    'name' => t('View More'),

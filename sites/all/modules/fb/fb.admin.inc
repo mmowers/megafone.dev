@@ -120,9 +120,11 @@ function fb_admin_app_page($fb_app = NULL) {
 
   // Warn user if values have changed since last edit.
   foreach (array('canvas_name' => 'canvas', 'application_name' => 'title') as $prop => $key) {
-    if (isset($fb_app->$prop) && $fb_app->$prop != $fb_app->$key) {
-      drupal_set_message(t("The property %prop has been changed to %value on facebook.  Go to the Edit tab, confirm values are correct and hit Save button to syncronize the local values.",
-                           array('%prop' => $prop, '%value' => $fb_app->$prop)), 'error');
+    if (isset($fb_app->$prop) && isset($fb_app->$key) && $fb_app->$prop != $fb_app->$key) {
+      if (module_exists('fb_app')) {
+        drupal_set_message(t("The property %prop has been changed to %value on facebook.  Go to the Edit tab, confirm values are correct and hit Save button to syncronize the local values.",
+                             array('%prop' => $prop, '%value' => $fb_app->$prop)), 'error');
+      }
     }
   }
 
@@ -144,7 +146,7 @@ function fb_admin_app_page($fb_app = NULL) {
 
   // This clause belongs in fb_tab.module.  But currently no hook for that tab to add a "property" that is not a true facebook property.
   // Note: fb_app->installable no longer means anything.
-  if ($fb_app->profile_tab_url && module_exists('fb_tab')) {
+  if (!empty($fb_app->profile_tab_url) && module_exists('fb_tab')) {
     // This app can be added to a page.  Provide a link to do so.
     $add_url = "http://www.facebook.com/dialog/pagetab?app_id=$fb_app->id&next=" . url(FB_TAB_PATH_ADDED . '/' . $fb_app->label, array('absolute' => TRUE, 'language' => FALSE));
     $output .= '<dt>' . t('Add to page link') . '</dt><dd>' . l($add_url, $add_url) . '</dd>';
@@ -191,6 +193,8 @@ function fb_admin_get_app_properties(&$fb_app) {
       t('About URL') => 'about_url',
       t('Application Name') => 'application_name',
       t('Edit URL') => 'edit_url',
+      // Learn canvas name regardless of whether fb_canvas is enabled.
+      t('Namespace') => 'namespace',
     );
     $props_map = fb_invoke(FB_ADMIN_OP_LIST_PROPERTIES, array('fb_app' => $fb_app), $props_map, FB_ADMIN_HOOK);
   }

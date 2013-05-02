@@ -71,8 +71,13 @@ function theme_fb_login_button($params) {
   $scope = $options['attributes']['scope'];
   unset($options['attributes']['scope']); // New markup does not need this attr.
 
-  $markup = '<div ' . drupal_attributes($options['attributes']) . '><a href="#" onclick="FB.login(function(){}, {scope : \'' . $scope . '\'}); return false;"><div><span>' . $text . '</span></div></a></div>';
-
+  if ($text) {
+    $markup = '<div ' . drupal_attributes($options['attributes']) . '><a href="#" onclick="FB.login(function(){}, {scope : \'' . $scope . '\'}); return false;"><div><span>' . $text . '</span></div></a></div>';
+  }
+  else {
+    // No text, use default image.
+    $markup = '<div class="fb_login_button_wrapper"><a href="#" onclick="FB.login(function(){}, {scope : \'' . $scope . '\'}); return false;"><div><img src="//www.facebook.com/images/fbconnect/login-buttons/connect_light_medium_short.gif" /></div></a><div>';
+  }
   if ($options['connected_markup']) {
     $markup = '<div class=fb_not_connected>' . $markup . '</div>' .
       '<div class=fb_connected>' . $options['connected_markup'] . '</div>';

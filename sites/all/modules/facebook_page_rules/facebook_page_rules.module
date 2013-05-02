@@ -54,13 +54,14 @@ function facebook_page_rules_menu() {
 }
 
 function facebook_page_rules_get_code($app_id) {
-  $redirect_url = $GLOBALS['base_url'] . '?q=' . 'facebook_page_rules';
+  $redirect_url = url('facebook_page_rules', array('absolute' => TRUE));
   $query = array(
     'client_id' => $app_id,
 	'redirect_uri' => $redirect_url,
 	'scope' => 'publish_stream,manage_pages',
   );
   $url = url("https://www.facebook.com/dialog/oauth", array('query' => $query));
+  dsm($url);
   drupal_goto($url);
 }
 
@@ -72,7 +73,7 @@ function facebook_page_rules_generate_token($code) {
   $query = array(
     'client_id' => $app_id,
 	'client_secret' => $app_secret,
-	'redirect_uri' => $GLOBALS['base_url'] . '?q=' . 'facebook_page_rules',
+	'redirect_uri' => url('facebook_page_rules', array('absolute' => TRUE)),
 	'code' => $code,
   );
   $url = url("https://graph.facebook.com/oauth/access_token", array('query' => $query));
@@ -85,7 +86,6 @@ function facebook_page_rules_generate_token($code) {
 	}
 	else {
 	$returned_value = json_decode($request_value->data, TRUE);
-	  watchdog('facebook_page_rules', 'Message: :msg<br />Type: :type<br />Code: :code<br />User: :uid', array(':msg' => $return_value['error']['message'], 'type' => $return_value['error']['type'], ':code' => $return_value['error']['code']), WATCHDOG_ERROR);
 	}
 	
   drupal_goto('/admin/config/system/facebook_page_rules');
@@ -110,7 +110,6 @@ function facebook_page_rules_post($message, $link, $name, $caption, $description
   $response = drupal_http_request($url, array('data' => http_build_query($data), 'method' => 'POST'));
     if ($response->code != 200) {
 	  $content = json_decode($response->data, TRUE);
-      watchdog('facebook_page_rules', 'Message: :msg<br />Type: :type<br />Code: :code<br />User: :uid', array(':msg' => $content['error']['message'], 'type' => $content['error']['type'], ':code' => $content['error']['code']), WATCHDOG_ERROR);
 	}
 }
 

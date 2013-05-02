@@ -48,6 +48,11 @@ function _fb_settings_url_rewrite_prefixes() {
  * For internal use only (see fb_session.inc).
  */
 function _fb_settings_parse($key) {
+  if (!function_exists('request_path')) {
+    // May not exist if settings.php is being include in drupal utilities that are not drupal proper.
+    return;
+  }
+
   // TODO: confirm this working in D7
   if ($path = request_path()) {
     $pos = strpos($path, $key . '/');

@@ -562,6 +562,10 @@ function fb_graph($path, $params = array(), $method = 'GET', $fb = NULL) {
 
   if (isset($http->data)) {
     $data = json_decode($http->data, TRUE);
+    // Most times graph returns JSON, but other times query string.  Thanks Facebook!
+    if (!$data) {
+      parse_str($http->data, $data);
+    }
   }
   else {
     $data = array(); // avoid php warnings.
@@ -602,7 +606,6 @@ function fb_graph($path, $params = array(), $method = 'GET', $fb = NULL) {
     throw new Exception($message); // Do we need our own code???
   }
 }
-
 
 /**
  * Helper to get the tokens needed to accss facebook's API.
@@ -797,19 +800,12 @@ function fb_page_alter(&$page) {
   global $_fb, $_fb_app;
 
   // This element recommended by facebook. http://developers.facebook.com/docs/reference/javascript/
-  $output = "<div id=\"fb-root\"></div>\n";
+  $output = "<div id=\"fb-root\" class=\"fb_module\"></div>\n";
 
   $settings = fb_js_settings();
 
   $output .= "<script type=\"text/javascript\">\n";
   $output .= "<!--//--><![CDATA[//><!--\n";
-
-  // Put this here instead of fb_devel.module because it must come first.
-  if (module_exists('fb_devel')) {
-    $output .= "if (typeof(FB_Devel) != 'undefined') {\n";
-    $output .= "  FB_Devel.sanityCheck()\n";
-    $output .= "}\n";
-  }
 
   // Pending javascript that needs to execute after FB is initialized.
   $js_array = fb_invoke(FB_OP_JS, array('fb' => $GLOBALS['_fb'], 'fb_app' => $GLOBALS['_fb_app']), array());
@@ -954,6 +950,7 @@ function fb_api_check_session($fb) {
  */
 function _fb_logout() {
   if (session_name()) { // Avoid PHP warning.
+    session_start(); // Make sure there is a session before destroy.
     session_destroy();
     $GLOBALS['user'] = drupal_anonymous_user();
     drupal_session_initialize();
@@ -1103,11 +1100,10 @@ function fb_get_object_fbu($object) {
     // $object->init may be present when object is a user.
     $fbu = substr($object->init, 0, $pos);
   }
-  elseif (isset($object->name) &&
-          $pos = strpos($object->name, '@facebook')) {
+  elseif (!empty($object->name) && ($pos = strpos($object->name, '@facebook'))) {
     $fbu = substr($object->name, 0, $pos);
   }
-  elseif ($object->uid > 0) {
+  elseif (!empty($object->uid)) {
     // This can be expensive on pages with many comments or nodes!
     $fbu = fb_get_fbu($object->uid);
   }
@@ -1471,6 +1467,27 @@ function fb_permission() {
 function fb_exit($destination = NULL) {
   global $_fb_app, $_fb;
 
+  $on_exit = &drupal_static('fb_invoke_async');
+  if (!empty($on_exit)) {
+    while ($args = array_shift($on_exit)) {
+      $func = array_shift($args);
+      if (fb_verbose()) {
+        watchdog('fb', t("Processing delayed call to %function."), array(
+                   '%function' => $func,
+                 ));
+      }
+      try {
+        $result = call_user_func_array($func, $args);
+      }
+      catch (Exception $e) {
+        fb_log_exception($e, t('Failed calling %function.',array(
+                                 '%function' => $func,
+                               )));
+      }
+    }
+  }
+
+
   if ($_fb_app && $_fb) {
 
     // Invoke other modules.
@@ -1480,9 +1497,36 @@ function fb_exit($destination = NULL) {
   }
 }
 
+/**
+ * Call a function not now but later.  As late as possible during the current request.
+ *
+ * In practice the function will be invoked during hook_exit().  In an
+ * ideal world it might be nice to be invoked even later, similar to the
+ * way drupal processes cron in drupal_page_footer() without delaying the
+ * page returned to the user.  However I know of no drupal hook called
+ * later than hook_exit.
+ *
+ * Provided as a convenience for third-party modules that want to invoke
+ * some facebook API, but cannot do so right away.  For example say your
+ * module implements hook_node_insert and wants to publish a message about
+ * the new node to facebook.  You could try invoking
+ * fb_graph_publish_action() from your hook_node_insert(). Unfortunately
+ * facebook would immediately look up the new node on your server (to
+ * populate graph details), but drupal would return page not found instead
+ * of the inspected node because the insert has not yet finished!  To work
+ * around this call fb_invoke_async('fb_graph_publish_action', ...)
+ * instead.
+ *
+ * @see fb_exit().
+ */
+function fb_invoke_async() {
+  $cache = &drupal_static(__FUNCTION__);
+  $cache[] = func_get_args();
+}
 
 /**
- * Invoke hook_fb.
+ * Invoke hook_fb().
+ * Only modules/fb modules should invoke this helper function which calls third-party hooks.
  */
 function fb_invoke($op, $data = NULL, $return = NULL, $hook = FB_HOOK) {
   foreach (module_implements($hook) as $name) {

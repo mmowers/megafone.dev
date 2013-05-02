@@ -26,12 +26,8 @@ function fb_app_fb_admin($op, $data, &$return) {
                                    ));
   }
   elseif ($op == FB_ADMIN_OP_LIST_PROPERTIES) {
-    $return[t('Application Name')] = 'application_name';
-    $return[t('About URL')] = 'about_url';
     $return[t('Post-Authorize Callback URL')] = 'authorize_url';
     $return[t('Post-Remove Callback URL')] = 'uninstall_url';
-    // Learn canvas name regardless of whether fb_canvas is enabled.
-    $return[t('Canvas Name')] = 'canvas_name';
   }
   elseif (($op == FB_ADMIN_OP_LOCAL_LINKS) && isset($fb_app->fba_id)) {
     // Path to edit this app.
@@ -217,7 +213,7 @@ function fb_app_admin_form_submit($form, &$form_state) {
           'secret' => $fb_app->secret,
           'id' => $fb_app->id,
           // Canvas and title are learned from facebook, not the form.
-          'canvas' => $fb_app->canvas_name ? $fb_app->canvas_name : '',
+          'canvas' => !empty($fb_app->canvas_name) ? $fb_app->canvas_name : '',
           'title' => $fb_app->application_name ? $fb_app->application_name : $fb_app->label,
           'data' => $fb_app->data,
         ))

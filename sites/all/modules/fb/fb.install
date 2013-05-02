@@ -63,7 +63,7 @@ function fb_requirements($phase) {
 
   if (!class_exists('Facebook') && $fb_platform) {
     // Attempt to load, if not loaded already.
-    include($fb_platform);
+    @include($fb_platform);
   }
 
   if (class_exists('Facebook')) {
