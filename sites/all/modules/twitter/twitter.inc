@@ -178,6 +178,11 @@ function twitter_set_status($twitter_account, $status) {
   return $twitter->statuses_update($status);
 }
 
+function twitter_set_status_with_media($twitter_account, $status, $node_id) {
+  $twitter = twitter_connect($twitter_account);
+  return $twitter->statuses_update_with_media($status, $node_id);
+}
+
 /**
  * Fetches a user's timeline.
  */

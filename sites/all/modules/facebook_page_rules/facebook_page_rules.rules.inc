@@ -29,11 +29,17 @@ function facebook_page_rules_rules_action_info() {
               'label' => t('Name of the link'),
               'description' => t("The name of the link. If not specified, default would be used."),
             ),
-		    'caption' => array(
+        // 'caption' => array(
+        //               'type' => 'text',
+        //   'optional' => TRUE,
+        //               'label' => t('Caption of the link.'),
+        //               'description' => t("The caption of the link (appears beneath the link name). If not specified, default would be used."),
+        //             ),
+        'caption' => array(
               'type' => 'text',
 		      'optional' => TRUE,
-              'label' => t('Caption of the link.'),
-              'description' => t("The caption of the link (appears beneath the link name). If not specified, default would be used."),
+              'label' => t('Node ID'),
+              'description' => t("Node ID. Don't remove - required to display image"),
             ),
 		    'description' => array(
               'type' => 'text',

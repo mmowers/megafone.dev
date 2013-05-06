@@ -383,12 +383,69 @@ class Twitter {
    *
    * @see https://dev.twitter.com/docs/api/1.1/post/statuses/update_with_media
    */
-  public function statuses_update_with_media($status, $media, $params = array()) {
-    $params['status'] = $status;
-    $params['media[]'] = '@{' . implode(',', $media) . '}';
-    $values = $this->call('statuses/statuses/update_with_media', $params, 'POST');
-    // @TODO support media at TwitterStatus class.
-    return new TwitterStatus($values);
+  public function statuses_update_with_media($status, $node_id, $params = array()) {
+    // $params['status'] = $status;
+    // // $params['media[]'] = '@{' . implode(',', $media) . '}';
+    // $image = "chillbear.jpg";
+    // $params['media[]'] = "@{$image};type=image/jpeg;filename={$image}";
+    // $values = $this->call('statuses/update_with_media', $params, 'POST');
+    // // @TODO support media at TwitterStatus class.
+    // return new TwitterStatus($values);
+    
+    // tmhOAuth
+    
+    // print_r($this->consumer);
+    // print_r($this->token);
+    //  = new OAuthConsumer($consumer_key, $consumer_secret);
+    // if (!empty($oauth_token) && !empty($oauth_token_secret)) {
+    //   $this->token = new OAuthConsumer($oauth_token, $oauth_token_secret);
+    // 
+    
+    require 'tmhOAuth/tmhOAuth.php';
+    require 'tmhOAuth/tmhUtilities.php';
+    
+    $tmhOAuth = new tmhOAuth(array(
+      'consumer_key'    => $this->consumer->key,
+      'consumer_secret' => $this->consumer->secret,
+      'user_token'      => $this->token->key,
+      'user_secret'     => $this->token->secret,
+    ));
+
+    // we're using a hardcoded image path here. You can easily replace this with
+    // an uploaded image - see images.php in the examples folder for how to do this
+    // 'image = "@{$_FILES['image']['tmp_name']};type={$_FILES['image']['type']};filename={$_FILES['image']['name']}",
+
+    // this is the jpeg file to upload. It should be in the same directory as this file.
+    // $image = '~/code/sites/default/files/field/image/chillbear_0.jpg';
+    // $image = 'chillbear.jpg';
+    
+    $node = node_load($node_id);
+    if (array_key_exists('und', $node->field_image)) 
+      $img_url = file_create_url($node->field_image['und'][0]['uri']);
+    else
+      return $this->statuses_update($status);
+    
+    $image = file_get_contents($img_url);
+
+    $code = $tmhOAuth->request(
+      'POST',
+      'https://api.twitter.com/1.1/statuses/update_with_media.json',
+      array(
+        // 'media[]'  => "@{$image};type=image/jpeg;filename={$image}",
+        'media[]' => $image,
+        'status'  => $status,
+      ),
+      true, // use auth
+      true  // multipart
+    );
+    
+    echo $code;
+
+    if ($code == 200) {
+      tmhUtilities::pr(json_decode($tmhOAuth->response['response']));
+    } else {
+      tmhUtilities::pr($tmhOAuth->response['response']);
+    }
   }
 
   /**

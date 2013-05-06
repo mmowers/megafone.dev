@@ -66,7 +66,6 @@ function facebook_page_rules_get_code($app_id) {
 }
 
 function facebook_page_rules_generate_token($code) {
-
   $code = $_REQUEST['code'];
   $app_id = variable_get('facebook_page_rules_app_id', NULL);
   $app_secret = variable_get('facebook_page_rules_app_secret', NULL);
@@ -98,19 +97,51 @@ function facebook_page_rules_post($message, $link, $name, $caption, $description
   $page_id = variable_get('facebook_page_rules_pageid', NULL);
 
   $url = "https://graph.facebook.com/$page_id/feed";
-
+  
+  // Check to see if there's an image. HACK - using caption as node_id
+  $node = node_load($caption);
+  if (array_key_exists('und', $node->field_image)) 
+    $img_url = file_create_url($node->field_image['und'][0]['uri']);
+  else
+    $img_url = "";
+  
+  // Cut description
+  $description = tokenTruncate($description, 150);
+  
   $data = array(
     'access_token' => $access_token,
     'message' => $message,
-	'link' => $link,
-	'name' => $name,
-	'caption' => $caption,
-	'description' => $description,
-    );
-  $response = drupal_http_request($url, array('data' => http_build_query($data), 'method' => 'POST'));
-    if ($response->code != 200) {
+  	'link' => $link,
+  	'name' => $name,
+    // 'caption' => $caption,
+  	'description' => $description,
+  	'picture' => $img_url,
+  );
+  $options = array(
+    'method' => 'POST',
+    'data' => drupal_http_build_query($data)
+  );
+  $response = drupal_http_request($url, $options);
+  if ($response->code != 200) {
 	  $content = json_decode($response->data, TRUE);
 	}
+}
+
+/*
+ * Function to truncate text
+ */
+function tokenTruncate($string, $your_desired_width) {
+  $parts = preg_split('/([\s\n\r]+)/', $string, null, PREG_SPLIT_DELIM_CAPTURE);
+  $parts_count = count($parts);
+
+  $length = 0;
+  $last_part = 0;
+  for (; $last_part < $parts_count; ++$last_part) {
+    $length += strlen($parts[$last_part]);
+    if ($length > $your_desired_width) { break; }
+  }
+
+  return implode(array_slice($parts, 0, $last_part));
 }
 
 // add hook_cron.

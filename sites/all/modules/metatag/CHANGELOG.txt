@@ -1,5 +1,25 @@
-Metatag 7.x-1.x-dev, xxxx-xx-xx
--------------------------------
+Metatag 7.x-1.0-beta6, 2013-04-14
+---------------------------------
+#1961448 by DamienMcKenna: Disable the fb:app_id field if fb_social is present.
+#1282620 by idflood, evanbarter, mgifford, Lukas von Blarer, Peacog, zterry95,
+  DamienMcKenna: Configuration translation through integration with the i18n
+  module.
+#1498740 by devuo: Merged Diogo's metatag_panels module.
+#1804356 by Dave Reid: Merged Dave's metatag_views module.
+#1909224 by DamienMcKenna: Fixed sloppy code in metatag_metatags_form_submit().
+#1969428 by DamienMcKenna: Changed the DC 'property' attribute to 'name'.
+#1284756 by dsdeiz: Update Migrate integration for compatibility with v2.5,
+  support additional entity types.
+#1953724 by DamienMcKenna, joshf, wiifm, twistor: PostgreSQL compatibility for
+  recent updates.
+#1295524 by DamienMcKenna: Temporary fix for the [node:summary] token not
+  working.
+#1952190 by DamienMcKenna: Only run queries involving taxonomy data if the
+  Taxonomy module is enabled.
+
+
+Metatag 7.x-1.0-beta5, 2013-03-23
+---------------------------------
 #1844638 by DamienMcKenna: Updated help messages around update 7004, when ran
   via Drush it will no longer used Batch API.
 #1844764 by Devin Carlson, DamienMcKenna: Fix arg placeholders in t() calls.
@@ -59,6 +79,53 @@ Metatag 7.x-1.x-dev, xxxx-xx-xx
   recurse properly.
 #1915284: Fixed metatag_html_head_alter() stopped removing duplicate tags too
   soon. Fixed duplicate canonical links when global redirect is enabled.
+#1845326 by DamienMcKenna, Peacog: Resolved language handling problems to
+  correctly identify the langcode to properly work with or without
+  Entity_Translation.
+#1876042 by DamienMcKenna: Rename variables to use $entity_id instead of $id
+  and $entity_type instead of $type.
+#1859136 by splatio, DamienMcKenna, multpix: Feeds integration - allow meta tag
+  fields to be the target for data imported using the Feeds module.
+#1880302 by olli, DamienMcKenna: Resolve problems with Features integration.
+#1923030 by krlucas, DamienMcKenna: Only run metatag_entity_update() on
+  supported entities.
+#1844638 by DamienMcKenna, mikeytown2: Remove unnecessary duplicate {metatag}
+  records, fix language values for all entities.
+#1935084 by DamienMcKenna: Remove unnecessary items from metatag_hook_info()
+  that was causing problems with PHP 5.4.
+#1791720 by kbasarab: Added the news_keywords meta tag.
+#1934492 by juampy, DamienMcKenna: Added a page for reverting meta tags for
+  specific entity or bundle.
+#1386320: Note a known issue of using custom template files that do not output
+  the $page['content'] variable.
+#1917902 by DamienMcKenna: Ensure strings returned from token replacement of
+  text fields ([node:summary]) is passed through the appropriate text filters.
+#1919070 by DamienMcKenna: Fix any records that may have been corrupted by e.g.
+  #1871020.
+#1861656 by DamienMcKenna, torrance123: Optionally load the global meta tags on
+  all pages, enabled by default.
+#1871798 by mstrelan: Clear the Context plugin cache when metatag_context is
+  enabled so that the new plugin becomes available.
+#1932192 by DamienMcKenna: Only run metatag_entity_view() once per page view.
+#1900434 by Dustin Currie, j0rd, DamienMcKenna: Added several new OpenGraph meta
+  tags, including ones for videos, location and contact information.
+#1883118 by DamienMcKenna: Improve the help message on Metatag:Context's Path
+  field as neither relative nor absolute URLs will work.
+#1945114 by SergO, DamienMcKenna: A query from #1919070 was missing the
+  preproccess wrapper around the table name.
+#1908586 by DamienMcKenna: Added a line to README.txt explaining how to
+  customize the tokens used to generate the meta tags.
+#1350610 by DamienMcKenna: metatag_update_7001 needed to drop the primary key
+  before customizing it.
+#1859136 by DamienMcKenna: Fixed scenarios when updating an entity there are two
+  copies of the data submitted, e.g. Feeds integration.
+#1308790 by DamienMcKenna: Documented that [current-user] tokens should not be
+  used.
+#1318294 by DamienMcKenna: Documented how to use Imagecache Token to resize
+  images that are being used as tokens for meta tags.
+#1871534 by DamienMcKenna: Documented how some browser plugins can make the page
+  title appear to be wrapped with doublequotes though the output doesn't
+  actually show them.
 
 
 Metatag 7.x-1.0-beta4, 2012-11-17

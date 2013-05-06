@@ -95,8 +95,16 @@ function twitter_post_node_insert($node) {
     }
 
     $status = strtr($node->twitter['status'], $replacements);
-    if (twitter_set_status($twitter_account, $status)) {
-      drupal_set_message(t('Successfully posted to Twitter'));
+    
+    // Has media
+    if (array_key_exists('und', $node->field_image)) {
+      if (twitter_set_status_with_media($twitter_account, $status, $node->nid)) {
+        drupal_set_message(t('Successfully posted to Twitter'));
+      }
+    } else {
+      if (twitter_set_status($twitter_account, $status)) {
+        drupal_set_message(t('Successfully posted to Twitter'));
+      }
     }
   }
 }

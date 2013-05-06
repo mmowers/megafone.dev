@@ -60,7 +60,7 @@ function facebook_page_rules_validate($access_token) {
 	  $f_page_id_list[] = $f_page['id'];
 	  if ($f_page['id'] == variable_get('facebook_page_rules_pageid', NULL)) {
 	    variable_set('facebook_page_rules_page_token', $f_page['access_token']);
-		drupal_set_message(t('Configuration saved.'), 'status');
+		drupal_set_message(t('Configuration saved.' . $f_page['access_token']), 'status');
 	  }
 	}
   
