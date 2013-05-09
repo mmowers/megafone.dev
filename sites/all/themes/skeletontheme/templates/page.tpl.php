@@ -159,11 +159,9 @@
             <div id="credits">
 			<?php print(date('Y') . ' ');?>
             <?php if (!empty($site_name)):?>
-            <?php print $site_name;?>- This is a Free Drupal Theme<br/>
+            <?php print $site_name;?><br/>
             <?php endif;?>
-            Ported to Drupal for the Open Source Community by <a href="http://www.drupalizing.com" target="_blank">Drupalizing</a>, a Project of <a href="http://www.morethanthemes.com" target="_blank">More than (just) Themes</a>. Original design by <a href="http://www.simplethemes.com/" target="_blank">Simple Themes</a>.
-            <script src="https://towtruck.mozillalabs.com/towtruck.js"></script>
-            <button onclick="TowTruck(this); return false;">Start TowTruck</button>
+            
             </div>
         
         </div>
