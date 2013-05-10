@@ -18,6 +18,11 @@ function twitter_actions_rules_action_info() {
           'label' => t('Message'),
           'description' => t("The content of the tweet."),
         ),
+        'nodeID' => array(
+          'type' => 'text',
+          'label' => t('NodeID'),
+          'description' => t("Node ID."),
+        ),
         'sender' => array(
           'type' => 'text',
           'label' => t('Sender'),
@@ -54,7 +59,7 @@ function _twitter_rules_account_options(RulesPlugin $element, $param_name) {
  * @param $sender
  *   The Drupal user that has a Twitter account
  */
-function twitter_actions_set_status($message, $sender) {
+function twitter_actions_set_status($message, $node_id, $sender) {
   $twitter_uid = _twitter_actions_get_twitter_id($sender);
   if (!isset($twitter_uid)) {
     // No Twitter authenticated account found.
@@ -65,8 +70,19 @@ function twitter_actions_set_status($message, $sender) {
   module_load_include('inc', 'twitter');
   $twitter_account = twitter_account_load($twitter_uid);
   try {
-    twitter_set_status($twitter_account, $message);
-    drupal_set_message(t('Successfully posted to Twitter'));
+    $node = node_load($node_id);
+  
+    // Has media
+    if (array_key_exists('und', $node->field_image)) {
+      if (twitter_set_status_with_media($twitter_account, $message, $node->nid)) {
+        drupal_set_message(t('Successfully posted to Twitter'));
+      }
+    } else {
+      if (twitter_set_status($twitter_account, $message)) {
+        drupal_set_message(t('Successfully posted to Twitter'));
+      }
+    }
+
   }
   catch (TwitterException $e) {
     drupal_set_message(t('An error occurred when posting to Twitter: @message',
