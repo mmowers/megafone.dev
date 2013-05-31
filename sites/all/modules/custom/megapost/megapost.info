@@ -1,0 +1,7 @@
+; $Id
+name = MegaPost
+description = Allows posting of content to selected websites.
+core = 7.x
+files[] = megapost.module
+files[] = megapost.install
+package = MegaPost
