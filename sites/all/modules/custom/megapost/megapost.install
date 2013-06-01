@@ -15,7 +15,7 @@ function megapost_install() {
 /**
  * Implements hook_schema().
  */
-/*function megapost_schema(){
+function megapost_schema(){
   $schema['megapost_facebook'] = array(
     'description' => 'Configuration to connect users to their facebook pages.',
     'fields' => array(
@@ -26,22 +26,23 @@ function megapost_install() {
         'not null' => TRUE,
       ),
       'uid' => array(
-        'description' => 'The drupal user',
+        'description' => 'The drupal user uid',
         'type' => 'int',
         'not null' => TRUE,
+        'unsigned' => TRUE,
         'default' => 0,
       ),
-      'app_id' => array(
-        'description' => 'The facebook app ID',
+      'user_token' => array(
+        'description' => '',
         'type' => 'varchar',
-        'length' => 32,
+        'length' => 255,
         'not null' => TRUE,
         'default' => '',
       ),
-      'app_secret' => array(
-        'description' => 'The facebook app secret.',
+      'page_url' => array(
+        'description' => '',
         'type' => 'varchar',
-        'length' => 32,
+        'length' => 255,
         'not null' => TRUE,
         'default' => '',
       ),
@@ -59,20 +60,6 @@ function megapost_install() {
         'not null' => TRUE,
         'default' => '',
       ),
-      'page_url' => array(
-        'description' => '',
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'user_token' => array(
-        'description' => '',
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-      ),
     ),
     'primary key' => array('mfid'),
     //not sure the purpose of indexes below... speed?
@@ -80,9 +67,9 @@ function megapost_install() {
     //  'node_changed' => array('changed'),
     //  'node_created' => array('created'),
     //),
-    'unique keys' => array(
-      'mfid' => array('mfid'),
-    ),
+    //'unique keys' => array(
+    //  'mfid' => array('mfid'),
+    //),
     'foreign keys' => array(
       'user' => array(
         'table' => 'users',
@@ -91,7 +78,7 @@ function megapost_install() {
     ),
   );
   return $schema;  
-}*/
+}
 
 
 /**
