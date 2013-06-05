@@ -465,10 +465,10 @@ function megapost_node_insert($node_reduced) {
             //'access_token' => variable_get('megapost_facebook_page_token', NULL),
             'message' => $node->body['und'][0]['value'],
             'picture' => $pic,
-            'link' => $base_url.'/node/'.$node->nid,
-            'name' => NULL,
-            'caption' => NULL,
-            'description' => NULL,
+            //'link' => $base_url.'/node/'.$node->nid,
+            //'name' => NULL,
+            //'caption' => NULL,
+            //'description' => NULL,
           );
 
           //$ch = curl_init();
