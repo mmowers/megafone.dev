@@ -46,11 +46,25 @@ function megapost_menu() {
     //'page arguments' => array(1),
     'type' => MENU_CALLBACK,
   );
+  $items['megapost_twitter_callback'] = array(
+    'title' => t('Callback for twitter with MegaPost'),
+    'page callback' => 'megapost_twitter_callback_func',
+    'access arguments' => array('configure own megapost connections'),
+    'type' => MENU_CALLBACK,
+  );
 
   $items['user/%user/edit/facebook'] = array(
     'title' => 'Facebook account',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('megapost_facebook_user_form', 1),
+    'access arguments' => array('configure own megapost connections'),
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['user/%user/edit/twitter'] = array(
+    'title' => 'Twitter account',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('megapost_twitter_user_form', 1),
     'access arguments' => array('configure own megapost connections'),
     'weight' => 5,
     'type' => MENU_LOCAL_TASK,
@@ -81,6 +95,20 @@ function megapost_config_form($form, &$form_state) {
     '#description' => t('Enter App Secret of your facebook app.'),
     '#required' => TRUE,
   );
+  $form['megapost_twitter_consumer_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Twitter Consumer Key'),
+    '#default_value' => variable_get('megapost_twitter_consumer_key', NULL),
+    '#description' => t('Enter consumer key of your twitter app.'),
+    '#required' => TRUE,
+  );
+  $form['megapost_twitter_consumer_secret'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Twitter Consumer Secret'),
+    '#default_value' => variable_get('megapost_twitter_consumer_secret', NULL),
+    '#description' => t('Enter consumer secret of your twitter app.'),
+    '#required' => TRUE,
+  );
   $form['megapost_config_submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save configuration'),
@@ -92,15 +120,18 @@ function megapost_config_form($form, &$form_state) {
  * Submit function for megapost_config_form.
  */
 function megapost_config_form_submit(&$form, $form_state) {
-  $megapost_facebook_app_id = $form_state['values']['megapost_facebook_app_id'];
-  $megapost_facebook_app_secret =  $form_state['values']['megapost_facebook_app_secret'];
-  
-  variable_set('megapost_facebook_app_id', $megapost_facebook_app_id);
-  variable_set('megapost_facebook_app_secret', $megapost_facebook_app_secret);
+  variable_set('megapost_facebook_app_id', $form_state['values']['megapost_facebook_app_id']);
+  variable_set('megapost_facebook_app_secret', $form_state['values']['megapost_facebook_app_secret']);
+  variable_set('megapost_twitter_consumer_key', $form_state['values']['megapost_twitter_consumer_key']);
+  variable_set('megapost_twitter_consumer_secret', $form_state['values']['megapost_twitter_consumer_secret']);
   drupal_set_message(t('Configuration saved.'), 'status');
   drupal_goto('admin/config');
 }
 
+
+
+
+/*********************FACEBOOK SECTION*******************************/
 /**
  * Form for user/%user/edit/facebook.
  */
@@ -266,6 +297,140 @@ function megapost_facebook_callback_func() {
 	
   drupal_goto('user');
 }
+/****************************END FACEBOOK SECTION************************************
+****************************************************************************************
+****************************************************************************************
+****************************************************************************************
+****************************************************************************************/
+/****************************TWITTER SECTION********************************************/
+/**
+ * Form for user/%user/edit/twitter.
+ */
+function megapost_twitter_user_form($form, &$form_state, $user){
+  $form['#uid'] = $user->uid;
+  $result = db_query("SELECT access_token
+                      FROM {megapost_twitter}
+                      WHERE uid = :uid",
+                      array(':uid' => $user->uid,
+                    ))->fetch();
+  if(!empty($result)){
+    $form['megapost_twitter_submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Reconfigure'),
+      '#submit' => array('megapost_twitter_user_form_submit'),
+    );
+
+  }
+  else{
+    $form['megapost_twitter_submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Configure'),
+      '#submit' => array('megapost_twitter_user_form_submit'),
+    );
+
+  }
+  return $form;
+  
+}
+//should have a validate function here i think
+/**
+ * Submit function for megapost_twitter_user_form
+ */
+ 
+function megapost_twitter_user_form_submit(&$form, $form_state) {
+  $testvar = 0;
+  require 'tmhOAuth/tmhOAuth.php';
+  require 'tmhOAuth/tmhUtilities.php';
+  //start process of authorizing and getting access tokens from twitter
+  $tmhOAuth = new tmhOAuth(array(
+    'consumer_key' => variable_get('megapost_twitter_consumer_key', NULL),
+    'consumer_secret' => variable_get('megapost_twitter_consumer_secret', NULL),
+  ));
+  $wtf = tmhUtilities::php_self();
+  $wtf2 = url('megapost_twitter_callback', array('absolute' => TRUE));
+  $code = $tmhOAuth->request(
+    'POST',
+    $tmhOAuth->url('oauth/request_token', ''),
+    array(
+      //'oauth_callback' => tmhUtilities::php_self(),
+      'oauth_callback' => url('megapost_twitter_callback', array('absolute' => TRUE)),
+    )
+  );
+
+  if ($code == 200) {
+    $_SESSION['oauth'] = $tmhOAuth->extract_params($tmhOAuth->response['response']);
+    $authurl = $tmhOAuth->url("oauth/authorize", '') .  "?oauth_token={$_SESSION['oauth']['oauth_token']}";
+    drupal_goto($authurl);
+    //header("Location: {$authurl}");
+
+    //authorize($tmhOAuth);
+  } else {
+    outputError($tmhOAuth);
+  }
+  /*$megapost_twitter_callback_url = url('megapost_twitter_callback', array('absolute' => TRUE));
+  $headers = array('Content-Type' => 'application/x-www-form-urlencoded');
+  $data = array(
+    'consumer_key' => $consumer_key,
+    'oauth_callback' => $megapost_twitter_callback_url,
+  );
+  $twitter_url = "https://api.twitter.com/oauth/request_token";
+  $request_value = drupal_http_request($twitter_url, $headers, 'POST', http_build_query($data));
+   * 
+   */
+}
+function outputError($tmhOAuth) {
+  return 'There was an error: ' . $tmhOAuth->response['response'];
+}
+
+
+function megapost_twitter_callback_func() {
+  global $user;
+  //drupal_set_message('we made it!');  
+  //now to get the permanent token
+  //this shit must happen again. DRY would say put this in a function
+  require 'tmhOAuth/tmhOAuth.php';
+  require 'tmhOAuth/tmhUtilities.php';
+  $tmhOAuth = new tmhOAuth(array(
+    'consumer_key' => variable_get('megapost_twitter_consumer_key', NULL),
+    'consumer_secret' => variable_get('megapost_twitter_consumer_secret', NULL),
+  ));
+  $tmhOAuth->config['user_token'] = $_SESSION['oauth']['oauth_token'];
+  $tmhOAuth->config['user_secret'] = $_SESSION['oauth']['oauth_token_secret'];
+
+  $code = $tmhOAuth->request(
+    'POST',
+    $tmhOAuth->url('oauth/access_token', ''),
+    array(
+      'oauth_verifier' => $_REQUEST['oauth_verifier']
+    )
+  );
+
+  if ($code == 200) {
+    $access_array = $tmhOAuth->extract_params($tmhOAuth->response['response']);
+    //drupal_set_message("great! PERMANENT ACCESS TOKEN= ".print_r($access_array, TRUE)." TEMP ACCESS TOKEN= ".print_r($_SESSION['oauth'], TRUE));
+    unset($_SESSION['oauth']);
+    //using the "upsert" function db_merge. update if the user exists, insert if it does not.
+    db_merge('megapost_twitter')
+      ->key(array('uid' => $user->uid))
+      ->fields(array(
+          'access_token' => $access_array['oauth_token'],
+          'token_secret' => $access_array['oauth_token_secret'],
+      ))
+      ->execute();
+    drupal_goto('user');
+  } else {
+    //drupal_set_message('shit! error: '. outputError($tmhOAuth));
+    drupal_goto(tmhUtilities::php_self());
+  }
+}
+
+/****************************END TWITTER SECTION************************************
+****************************************************************************************
+****************************************************************************************
+****************************************************************************************
+****************************************************************************************/
+
+
 
 
 /**
@@ -273,12 +438,12 @@ function megapost_facebook_callback_func() {
  * 
  */
 
-function megapost_node_insert($node) {
+function megapost_node_insert($node_reduced) {
   global $base_url;
   //$node = node_load($node_incomplete->nid);
-  if(!empty($node->field_actions['und'])){
+  if(!empty($node_reduced->field_actions['und'])){
     global $user;
-    foreach($node->field_actions['und'] as $val){
+    foreach($node_reduced->field_actions['und'] as $val){
       if($val['tid'] == 1){
         //tid=1 this means we are posting to facebook
         $result = db_query("SELECT page_id, page_token
@@ -289,11 +454,17 @@ function megapost_node_insert($node) {
         if(!empty($result)){
           //$page_id = variable_get('megapost_facebook_pageid', NULL);
           $url = "https://graph.facebook.com/$result->page_id/feed";
+          $node = node_load($node_reduced->nid); //needed to access image url
+          $pic = NULL;
+          if (array_key_exists('und', $node->field_image)){
+            $pic = file_create_url($node->field_image['und'][0]['uri']);            
+          }
+            
           $data = array(
             'access_token' => $result->page_token,
             //'access_token' => variable_get('megapost_facebook_page_token', NULL),
-            //'message' => $node->body['und'][0]['value'],
-            'picture' => NULL,
+            'message' => $node->body['und'][0]['value'],
+            'picture' => $pic,
             'link' => $base_url.'/node/'.$node->nid,
             'name' => NULL,
             'caption' => NULL,
@@ -322,6 +493,55 @@ function megapost_node_insert($node) {
  
 
         //return FALSE;
+      }
+      elseif($val['tid'] == 2){
+        //tid=2 means we are posting to twitter
+        $result = db_query("SELECT access_token, token_secret
+                            FROM {megapost_twitter}
+                            WHERE uid = :uid",
+                            array(':uid' => $user->uid,
+                          ))->fetch();
+        if(!empty($result)){
+          require 'tmhOAuth/tmhOAuth.php';
+          require 'tmhOAuth/tmhUtilities.php';
+
+          $tmhOAuth = new tmhOAuth(array(
+            'consumer_key'    => variable_get('megapost_twitter_consumer_key', NULL),
+            'consumer_secret' => variable_get('megapost_twitter_consumer_secret', NULL),
+            'user_token'      => $result->access_token,
+            'user_secret'     => $result->token_secret,
+          ));
+
+          $node = node_load($node_reduced->nid); //needed to access image url
+          if (array_key_exists('und', $node->field_image)){
+            $img_url = file_create_url($node->field_image['und'][0]['uri']);            
+          } 
+          else{
+            return $this->statuses_update($status);            
+          }
+
+          $image = file_get_contents($img_url);
+
+          $code = $tmhOAuth->request(
+            'POST',
+            'https://api.twitter.com/1.1/statuses/update_with_media.json',
+            array(
+              'media[]' => $image,
+              'status'  => $node->body['und'][0]['value'],
+            ),
+            true, // use auth
+            true  // multipart
+          );
+
+          echo $code;
+
+          if ($code == 200) {
+            tmhUtilities::pr(json_decode($tmhOAuth->response['response']));
+          } else {
+            tmhUtilities::pr($tmhOAuth->response['response']);
+          }
+          
+        }        
       }
     }
   }

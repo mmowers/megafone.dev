@@ -77,6 +77,45 @@ function megapost_schema(){
       ),
     ),
   );
+  $schema['megapost_twitter'] = array(
+    'description' => 'Configuration to connect users to their twitter pages.',
+    'fields' => array(
+      'mtid' => array(
+        'description' => 'The primary identifier for a megapost twitter entry',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'description' => 'The drupal user uid',
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+      'access_token' => array(
+        'description' => '',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'token_secret' => array(
+        'description' => '',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('mtid'),
+    'foreign keys' => array(
+      'user' => array(
+        'table' => 'users',
+        'columns' => array('uid' => 'uid'),
+      ),
+    ),
+  );
   return $schema;  
 }
 
@@ -87,8 +126,6 @@ function megapost_schema(){
 function megapost_uninstall() {
   variable_del('megapost_facebook_app_id');
   variable_del('megapost_facebook_app_secret');
-  variable_del('megapost_facebook_pageid');
-  variable_del('megapost_facebook_page_token');
-  variable_del('megapost_facebook_page_url');
-  variable_del('megapost_facebook_user_token');
+  variable_del('megapost_twitter_consumer_key');
+  variable_del('megapost_twitter_consumer_secret');
 }
