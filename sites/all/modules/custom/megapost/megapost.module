@@ -199,8 +199,6 @@ function megapost_facebook_user_form_submit(&$form, $form_state) {
       //variable_set('megapost_facebook_pageid', $facebook_returned_value['id']);
     }
 	  else {
-	    watchdog('megapost', 'Message: :msg<br />Type: :type<br />Code: :code<br />User: :uid', array(':msg' => $returned_value['error']['message'], 
-	    'type' => $returned_value['error']['type'], ':code' => $returned_value['error']['code']), WATCHDOG_ERROR);
       //perhaps i should do more than just return here? like form_set_error
       return;
 	  }
@@ -212,6 +210,8 @@ function megapost_facebook_user_form_submit(&$form, $form_state) {
     ->fields(array(
         'page_url' => $megapost_facebook_page_url,
         'page_id' => $megapost_facebook_pageid,
+        'user_token' => '',
+        'page_token' => '',
     ))
     ->execute();
   /*if($form['#user_already_entered']){
@@ -302,8 +302,7 @@ function megapost_facebook_callback_func() {
 	  }
 	}
 	else {
-	$returned_value = json_decode($request_value->data, TRUE);
-	  watchdog('megapost', 'Message: :msg<br />Type: :type<br />Code: :code<br />User: :uid', array(':msg' => $return_value['error']['message'], 'type' => $return_value['error']['type'], ':code' => $return_value['error']['code']), WATCHDOG_ERROR);
+    $returned_value = json_decode($request_value->data, TRUE);
 	}
 	
   drupal_goto('user');
@@ -499,7 +498,7 @@ function megapost_node_insert($node_reduced) {
           $response = drupal_http_request($url, array('data' => http_build_query($data), 'method' => 'POST'));
           if ($response->code != 200) {
             $content = json_decode($response->data, TRUE);
-            watchdog('megapost', 'Message: :msg<br />Type: :type<br />Code: :code<br />User: :uid', array(':msg' => $content['error']['message'], 'type' => $content['error']['type'], ':code' => $content['error']['code']), WATCHDOG_ERROR);
+            drupal_set_message("Somthing went wrong content=".print_r($content, TRUE));
           }
           
         }
@@ -577,7 +576,6 @@ function megapost_node_insert($node_reduced) {
         $response = drupal_http_request($url, array('data' => http_build_query($data), 'method' => 'DELETE'));
         if ($response->code != 200) {
           $content = json_decode($response->data, TRUE);
-          watchdog('megapost', 'Message: :msg<br />Type: :type<br />Code: :code<br />User: :uid', array(':msg' => $content['error']['message'], 'type' => $content['error']['type'], ':code' => $content['error']['code']), WATCHDOG_ERROR);
         }
 
 
