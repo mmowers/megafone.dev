@@ -477,7 +477,7 @@ function megapost_node_insert($node_reduced) {
             //'access_token' => variable_get('megapost_facebook_page_token', NULL),
             'message' => $node->body['und'][0]['value'],
             'picture' => $pic,
-            'link' => $base_url.'/node/'.$node->nid,
+            //'link' => $base_url.'/node/'.$node->nid,
             //'name' => NULL,
             //'caption' => NULL,
             //'description' => NULL,
@@ -495,7 +495,7 @@ function megapost_node_insert($node_reduced) {
           //  watchdog('megapost', 'Message: :msg<br />Type: :type<br />Code: :code<br />User: :uid', array(':msg' => $content['error']['message'], 'type' => $content['error']['type'], ':code' => $content['error']['code']), WATCHDOG_ERROR);
           //}
 
-          $response = drupal_http_request($url, array('data' => http_build_query($data), 'method' => 'POST'));
+          $response = drupal_http_request($url, array('data' => drupal_http_build_query($data), 'method' => 'POST'));
           if ($response->code != 200) {
             $content = json_decode($response->data, TRUE);
             drupal_set_message("Somthing went wrong content=".print_r($content, TRUE)."   data=".print_r($data, TRUE));
