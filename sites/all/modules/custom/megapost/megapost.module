@@ -137,7 +137,7 @@ function megapost_config_form_submit(&$form, $form_state) {
  */
 function megapost_facebook_user_form($form, &$form_state, $user){
   $form['#uid'] = $user->uid;
-  $result = db_query("SELECT page_url
+  $result = db_query("SELECT page_url, page_token
                       FROM {megapost_facebook}
                       WHERE uid = :uid",
                       array(':uid' => $user->uid,
@@ -155,11 +155,22 @@ function megapost_facebook_user_form($form, &$form_state, $user){
     '#description' => t('Enter the url of the facebook page. (Requires page administrative rights.)<p>The url should be in format <em>http://www.facebook.com/[name]</em> or <em>http://www.facebook.com/pages/[name]/[id]</em>'),
     '#required' => TRUE,
   );
-  $form['megapost_facebook_submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Save configuration'),
-    '#submit' => array('megapost_facebook_user_form_submit'),
-  );
+  if(!empty($result->page_token)){
+    $form['megapost_facebook_submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Reconfigure'),
+      '#submit' => array('megapost_facebook_user_form_submit'),
+      '#description' => t('Your facebook account has already been configured. This will reconfigure your account'), 
+    );    
+  }
+  else{
+    $form['megapost_facebook_submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save configuration'),
+      '#submit' => array('megapost_facebook_user_form_submit'),
+      '#description' => t('You have not yet configured your account. Press this to do so.'), 
+    );        
+  }
   return $form;
   
 }
@@ -318,6 +329,7 @@ function megapost_twitter_user_form($form, &$form_state, $user){
       '#type' => 'submit',
       '#value' => t('Reconfigure'),
       '#submit' => array('megapost_twitter_user_form_submit'),
+      '#description' => t('Your twitter account has already been configured. This will reconfigure your account'), 
     );
 
   }
@@ -326,6 +338,7 @@ function megapost_twitter_user_form($form, &$form_state, $user){
       '#type' => 'submit',
       '#value' => t('Configure'),
       '#submit' => array('megapost_twitter_user_form_submit'),
+      '#description' => t('You have not yet configured your account. Press this to do so.'),
     );
 
   }
