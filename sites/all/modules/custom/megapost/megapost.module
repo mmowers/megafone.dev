@@ -477,7 +477,7 @@ function megapost_node_insert($node_reduced) {
             //'access_token' => variable_get('megapost_facebook_page_token', NULL),
             'message' => $node->body['und'][0]['value'],
             'picture' => $pic,
-            //'link' => $base_url.'/node/'.$node->nid,
+            'link' => $base_url.'/node/'.$node->nid,
             //'name' => NULL,
             //'caption' => NULL,
             //'description' => NULL,
@@ -499,6 +499,9 @@ function megapost_node_insert($node_reduced) {
           if ($response->code != 200) {
             $content = json_decode($response->data, TRUE);
             drupal_set_message("Somthing went wrong content=".print_r($content, TRUE)."   data=".print_r($data, TRUE));
+          }
+          else{
+            drupal_set_message("data=".print_r($data, TRUE));
           }
           
         }
