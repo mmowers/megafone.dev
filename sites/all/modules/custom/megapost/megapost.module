@@ -498,7 +498,7 @@ function megapost_node_insert($node_reduced) {
           $response = drupal_http_request($url, array('data' => http_build_query($data), 'method' => 'POST'));
           if ($response->code != 200) {
             $content = json_decode($response->data, TRUE);
-            drupal_set_message("Somthing went wrong content=".print_r($content, TRUE));
+            drupal_set_message("Somthing went wrong content=".print_r($content, TRUE)."   data=".print_r($data, TRUE));
           }
           
         }
