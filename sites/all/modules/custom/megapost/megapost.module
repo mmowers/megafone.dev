@@ -468,8 +468,10 @@ function megapost_node_insert($node_reduced) {
           $url = "https://graph.facebook.com/$result->page_id/feed";
           $node = node_load($node_reduced->nid); //needed to access image url
           $pic = NULL;
+          $link = NULL;
           if (array_key_exists('und', $node->field_image)){
-            $pic = file_create_url($node->field_image['und'][0]['uri']);            
+            $pic = file_create_url($node->field_image['und'][0]['uri']); 
+            $link = $base_url.'/node/'.$node->nid;
           }
             
           $data = array(
@@ -477,7 +479,7 @@ function megapost_node_insert($node_reduced) {
             //'access_token' => variable_get('megapost_facebook_page_token', NULL),
             'message' => $node->body['und'][0]['value'],
             'picture' => $pic,
-            'link' => $base_url.'/node/'.$node->nid,
+            'link' => $link,
             //'name' => NULL,
             //'caption' => NULL,
             //'description' => NULL,
@@ -498,10 +500,10 @@ function megapost_node_insert($node_reduced) {
           $response = drupal_http_request($url, array('data' => drupal_http_build_query($data), 'method' => 'POST'));
           if ($response->code != 200) {
             $content = json_decode($response->data, TRUE);
-            drupal_set_message("Somthing went wrong content=".print_r($content, TRUE)."   data=".print_r($data, TRUE));
+            //drupal_set_message("Somthing went wrong content=".print_r($content, TRUE)."   data=".print_r($data, TRUE));
           }
           else{
-            drupal_set_message("data=".print_r($data, TRUE));
+            //drupal_set_message("data=".print_r($data, TRUE));
           }
           
         }
@@ -529,31 +531,34 @@ function megapost_node_insert($node_reduced) {
 
           $node = node_load($node_reduced->nid); //needed to access image url
           if (array_key_exists('und', $node->field_image)){
-            $img_url = file_create_url($node->field_image['und'][0]['uri']);            
+            $img_url = file_create_url($node->field_image['und'][0]['uri']);
+            $code = $tmhOAuth->request(
+              'POST',
+              'https://api.twitter.com/1.1/statuses/update_with_media.json',
+              array(
+                'media[]' => file_get_contents($img_url),
+                'status'  => $node->body['und'][0]['value'],
+              ),
+              true, // use auth
+              true  // multipart
+            );
           } 
           else{
-            return $this->statuses_update($status);            
+            $code = $tmhOAuth->request(
+              'POST',
+              'https://api.twitter.com/1.1/statuses/update.json',
+              array(
+                'status' => $node->body['und'][0]['value'],
+              )
+            );           
           }
 
-          $image = file_get_contents($img_url);
-
-          $code = $tmhOAuth->request(
-            'POST',
-            'https://api.twitter.com/1.1/statuses/update_with_media.json',
-            array(
-              'media[]' => $image,
-              'status'  => $node->body['und'][0]['value'],
-            ),
-            true, // use auth
-            true  // multipart
-          );
-
-          echo $code;
-
           if ($code == 200) {
-            tmhUtilities::pr(json_decode($tmhOAuth->response['response']));
+            //drupal_set_message("response=".print_r(json_decode($tmhOAuth->response['response']), TRUE));
+            //tmhUtilities::pr(json_decode($tmhOAuth->response['response']));
           } else {
-            tmhUtilities::pr($tmhOAuth->response['response']);
+            //drupal_set_message("response=".print_r($tmhOAuth->response['response'], TRUE));
+            //tmhUtilities::pr($tmhOAuth->response['response']);          
           }
           
         }        
