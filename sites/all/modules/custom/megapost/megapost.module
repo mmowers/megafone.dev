@@ -53,21 +53,21 @@ function megapost_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['user/%user/edit/facebook'] = array(
+  $items['user/%user/facebook'] = array(
     'title' => 'Facebook account',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('megapost_facebook_user_form', 1),
     'access arguments' => array('configure own megapost connections'),
     'weight' => 5,
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_LOCAL_ACTION,
   );
-  $items['user/%user/edit/twitter'] = array(
+  $items['user/%user/twitter'] = array(
     'title' => 'Twitter account',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('megapost_twitter_user_form', 1),
     'access arguments' => array('configure own megapost connections'),
     'weight' => 5,
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_LOCAL_ACTION,
   );
 
   return $items;
@@ -148,29 +148,28 @@ function megapost_facebook_user_form($form, &$form_state, $user){
     $default_url = $result->page_url;
     //$form['#user_already_entered'] = TRUE;
   }
+  if(!empty($result->page_token)){
+    $prefix = '<strong>'.t('Your facebook account has already been configured. Fill out this form again to reconfigure the account.').'</strong><br><br>';
+    $submit_text = t('Reconfigure account');
+  }
+  else{
+    $prefix = '';
+    $submit_text = t('Save configuration');
+  }
   $form['megapost_facebook_page_url'] = array(
+    '#prefix' => $prefix,
     '#type' => 'textfield',
     '#title' => t('Facebook Page url'),
     '#default_value' => $default_url,
     '#description' => t('Enter the url of the facebook page. (Requires page administrative rights.)<p>The url should be in format <em>http://www.facebook.com/[name]</em> or <em>http://www.facebook.com/pages/[name]/[id]</em>'),
     '#required' => TRUE,
   );
-  if(!empty($result->page_token)){
-    $form['megapost_facebook_submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Reconfigure'),
-      '#submit' => array('megapost_facebook_user_form_submit'),
-      //'#description' => t('Your facebook account has already been configured. This will reconfigure your account'), 
-    );    
-  }
-  else{
-    $form['megapost_facebook_submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save configuration'),
-      '#submit' => array('megapost_facebook_user_form_submit'),
-      //'#description' => t('You have not yet configured your account. Press this to do so.'), 
-    );        
-  }
+  $form['megapost_facebook_submit'] = array(
+    '#type' => 'submit',
+    '#value' => $submit_text,
+    '#submit' => array('megapost_facebook_user_form_submit'),
+    //'#description' => t('Your facebook account has already been configured. This will reconfigure your account'), 
+  );    
   return $form;
   
 }
@@ -324,23 +323,22 @@ function megapost_twitter_user_form($form, &$form_state, $user){
                       array(':uid' => $user->uid,
                     ))->fetch();
   if(!empty($result)){
-    $form['megapost_twitter_submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Reconfigure'),
-      '#submit' => array('megapost_twitter_user_form_submit'),
-      //'#description' => t('Your twitter account has already been configured. This will reconfigure your account'), 
-    );
+    $prefix = '<strong>'.t('Your twitter account has already been configured').'</strong><br><br>';
+    $submit_text = t('Reconfigure account');
 
   }
   else{
-    $form['megapost_twitter_submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Configure'),
-      '#submit' => array('megapost_twitter_user_form_submit'),
-      //'#description' => t('You have not yet configured your account. Press this to do so.'),
-    );
-
+    $prefix = '';
+    $submit_text = t('Configure account');
   }
+  $form['megapost_twitter_submit'] = array(
+    '#prefix' => $prefix,
+    '#type' => 'submit',
+    '#value' => $submit_text,
+    '#submit' => array('megapost_twitter_user_form_submit'),
+    //'#description' => t('Your twitter account has already been configured. This will reconfigure your account'), 
+  );
+
   return $form;
   
 }
@@ -592,3 +590,13 @@ function megapost_node_insert($node_reduced) {
     }
   }
 }*/
+
+
+/**
+ * Implements hook_user_view_alter().
+ * 
+ */
+
+function megapost_user_view_alter(&$build) {
+  $deleteme = 1;
+}
