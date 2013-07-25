@@ -15,4 +15,8 @@ function subskeleton_preprocess_html(&$variables,$hook) {
     drupal_add_css(path_to_theme() . '/css/sub-node-add.css', array('weight' => CSS_THEME));
     //drupal_add_js(path_to_theme() . '/js/sub-node-add.js',array('type' => 'file', 'scope' => 'footer', 'weight' => 100, 'group' => JS_THEME));
   }
+  elseif($path_cur=='user' || preg_match('#^user/[1-9][0-9]*$#', $path_cur)){
+    drupal_add_css(path_to_theme() . '/css/sub-user.css', array('weight' => CSS_THEME));
+    //drupal_add_js(path_to_theme() . '/js/sub-user.js',array('type' => 'file', 'scope' => 'footer', 'weight' => 100, 'group' => JS_THEME));
+  }
 }

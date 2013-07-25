@@ -53,21 +53,26 @@ function megapost_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  $items['user/%user/connections'] = array(
+    'title' => 'Connections',
+    'page callback' => 'connections_page',
+    'page arguments' => array(1),
+    'access arguments' => array('configure own megapost connections'),
+    'type' => MENU_NORMAL_ITEM,
+  );
   $items['user/%user/facebook'] = array(
     'title' => 'Facebook account',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('megapost_facebook_user_form', 1),
     'access arguments' => array('configure own megapost connections'),
-    'weight' => 5,
-    'type' => MENU_LOCAL_ACTION,
+    'type' => MENU_NORMAL_ITEM,
   );
   $items['user/%user/twitter'] = array(
     'title' => 'Twitter account',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('megapost_twitter_user_form', 1),
     'access arguments' => array('configure own megapost connections'),
-    'weight' => 5,
-    'type' => MENU_LOCAL_ACTION,
+    'type' => MENU_NORMAL_ITEM,
   );
 
   return $items;
@@ -128,6 +133,56 @@ function megapost_config_form_submit(&$form, $form_state) {
   drupal_goto('admin/config');
 }
 
+function connections_page($user) {
+  if (!is_object($user) || !$user->uid) {
+    return MENU_NOT_FOUND;
+  }
+  
+
+  //facebook
+  $result = db_query("SELECT page_token
+                      FROM {megapost_facebook}
+                      WHERE uid = :uid",
+                      array(':uid' => $user->uid,
+                    ))->fetch();
+  if(!empty($result)){
+    $fbtext = '(connected)';
+    $fbconfig = 'Re-configure';
+    $fbicon = '/misc/message-24-ok.png';
+  }
+  else{
+    $fbtext = '(not connected)';
+    $fbconfig = 'Connect';
+    $fbicon = '/misc/message-24-error.png';
+  }
+  
+  //twitter
+  $result = db_query("SELECT access_token
+                      FROM {megapost_twitter}
+                      WHERE uid = :uid",
+                      array(':uid' => $user->uid,
+                    ))->fetch();
+  if(!empty($result)){
+    $twtext = '(connected)';
+    $twconfig = 'Re-configure';
+    $twicon = '/misc/message-24-ok.png';   
+  }
+  else{
+    $twtext = '(not connected)';
+    $twconfig = 'Connect';
+    $twicon = '/misc/message-24-error.png';
+  }
+  
+  
+  
+  $output = "
+    <div class='connections-block'>
+      <p><span class='connections-title'>Facebook:</span> <img src='$fbicon'>$fbtext <a href ='/user/$user->uid/facebook'>$fbconfig</a></p>
+      <p><span class='connections-title'>Twitter:</span> <img src='$twicon'>$twtext <a href ='/user/$user->uid/twitter'>$twconfig</a></p>
+    </div>";
+
+  return $output;
+}
 
 
 
@@ -144,7 +199,7 @@ function megapost_facebook_user_form($form, &$form_state, $user){
                     ))->fetch();
   $default_url = NULL;
   //$form['#user_already_entered'] = FALSE;
-  if(!empty($result)){
+  if(!empty($result->page_url)){
     $default_url = $result->page_url;
     //$form['#user_already_entered'] = TRUE;
   }
@@ -599,4 +654,30 @@ function megapost_node_insert($node_reduced) {
 
 function megapost_user_view_alter(&$build) {
   $deleteme = 1;
+}
+
+/**
+ * Implements hook_user_insert().
+ * 
+ */
+function megapost_user_insert(&$edit, $account, $category) {
+  $deleteme = 1;
+}
+
+/**
+ * Implements hook_user_login().
+ * 
+ */
+function megapost_user_login(&$edit, $account){
+  // Your logic will set $redirection to the desired location
+  $redirection = "user/$account->uid/connections";
+
+ 
+// Unless there is already a redirection going, or the user is trying to reset his password, we redirect to $redirection.
+  if (empty($_GET['destination'])
+    && !is_null($redirection)
+    && (!isset($_POST['form_id']) || $_POST['form_id'] != 'user_pass_reset'))
+  {
+    $_GET['destination'] = $redirection; // Should we use $edit['redirect'] instead..?
+  }
 }

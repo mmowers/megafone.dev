@@ -2,3 +2,19 @@ input[type="text"],input[type="password"]{
   width: 100%;
   max-width: 250px;
 }
+
+.connections-block p{
+  font-size: 1.5em;
+}
+.connections-block img{
+  position: relative;
+  top: 5px;
+}
+.connections-title{
+  font-weight: bold;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+#breadcrumb{
+  display: none;
+}
