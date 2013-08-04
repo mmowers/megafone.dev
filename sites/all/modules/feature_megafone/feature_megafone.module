@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Feature Megafone feature.
+ */
+
+include_once 'feature_megafone.features.inc';

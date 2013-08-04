@@ -1,0 +1,9 @@
+h1{
+  font-size: 1.7em;
+}
+.page-user ul.nav-tabs{
+  display: none;
+}
+.breadcrumb{
+  display: none;
+}

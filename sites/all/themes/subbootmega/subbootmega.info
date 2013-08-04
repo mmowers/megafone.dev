@@ -1,0 +1,15 @@
+name = SubBootMega
+description = Subtheme of Bootstrap
+core = 7.x
+base theme = bootstrap
+regions[navigation]     = 'Navigation'
+regions[header]         = 'Top Bar'
+regions[highlighted]    = 'Highlighted'
+regions[help]           = 'Help'
+regions[content]        = 'Content'
+regions[sidebar_first]  = 'Primary'
+regions[sidebar_second] = 'Secondary'
+regions[footer]         = 'Footer'
+
+stylesheets[all][]   = subbootmega.css
+scripts[] = subbootmega.js
