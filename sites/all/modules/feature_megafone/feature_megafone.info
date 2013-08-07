@@ -42,3 +42,4 @@ features[node][] = coupon_special
 features[node][] = event
 features[taxonomy][] = actions
 features[user_role][] = guest
+features[views_view][] = user_content

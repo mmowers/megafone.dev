@@ -140,12 +140,12 @@ function connections_page($user) {
   
 
   //facebook
-  $result = db_query("SELECT page_token
+  $result = db_query("SELECT page_token, page_url
                       FROM {megapost_facebook}
                       WHERE uid = :uid",
                       array(':uid' => $user->uid,
                     ))->fetch();
-  if(!empty($result->page_token)){
+  if(!empty($result->page_token) && !empty($result->page_url)){
     $fbtext = '(connected)';
     $fbconfig = 'Re-configure';
     $fbicon = '/misc/message-24-ok.png';
@@ -203,7 +203,7 @@ function megapost_facebook_user_form($form, &$form_state, $user){
     $default_url = $result->page_url;
     //$form['#user_already_entered'] = TRUE;
   }
-  if(!empty($result->page_token)){
+  if(!empty($result->page_token) && !empty($result->page_url)){    
     $prefix = '<strong>'.t('Your facebook account has already been configured. Fill out this form again to reconfigure the account.').'</strong><br><br>';
     $submit_text = t('Reconfigure account');
   }
@@ -211,8 +211,12 @@ function megapost_facebook_user_form($form, &$form_state, $user){
     $prefix = '';
     $submit_text = t('Save configuration');
   }
+  $prefix2 = t('Please allow all permissions that facebook requests.
+    These are required for megafone to function properly. Posts will only be made to facebook
+    when you request them. If you experience any issue, double check that you have administrative
+    access to the page and log out of facebook before submitting this form.').'<br><br>';
   $form['megapost_facebook_page_url'] = array(
-    '#prefix' => $prefix,
+    '#prefix' => $prefix.$prefix2,
     '#type' => 'textfield',
     '#title' => t('Facebook Page url'),
     '#default_value' => $default_url,
@@ -358,7 +362,7 @@ function megapost_facebook_callback_func() {
     $returned_value = json_decode($request_value->data, TRUE);
 	}
 	
-  drupal_goto('user');
+  drupal_goto("user/$user->uid/connections");
 }
 /****************************END FACEBOOK SECTION************************************
 ****************************************************************************************
@@ -385,8 +389,11 @@ function megapost_twitter_user_form($form, &$form_state, $user){
     $prefix = '';
     $submit_text = t('Configure account');
   }
+  $prefix2 = t('Please allow all permissions that twitter requests.
+    These are required for megafone to function properly. Posts will only be made to twitter
+    when you request them.').'<br><br>';
   $form['megapost_twitter_submit'] = array(
-    '#prefix' => $prefix,
+    '#prefix' => $prefix.$prefix2,
     '#type' => 'submit',
     '#value' => $submit_text,
     '#submit' => array('megapost_twitter_user_form_submit'),
@@ -481,7 +488,7 @@ function megapost_twitter_callback_func() {
           'token_secret' => $access_array['oauth_token_secret'],
       ))
       ->execute();
-    drupal_goto('user');
+    drupal_goto("user/$user->uid/connections");
   } else {
     //drupal_set_message('shit! error: '. outputError($tmhOAuth));
     drupal_goto(tmhUtilities::php_self());
